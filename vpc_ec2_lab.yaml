@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC and EC2 instance creation lab'
+
+Resources:
+  MyVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: '10.0.0.0/16'
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-VPC
+
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-IGW
+
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  MySecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Enable SSH access'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: '0.0.0.0/0'
+      VpcId: !Ref MyVPC
+
+  PrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: '10.0.1.0/24'
+      AvailabilityZone: !Select
+        - '0'
+        - Fn::GetAZs: ''
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-PrivateSubnet
+
+  MyInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: 't3.micro'
+      SecurityGroups:
+        - !GetAtt MySecurityGroup.GroupId
+      KeyName: 'vockey'  # Replace with your SSH key pair name
+      ImageId: 'ami-038937b3d6616035f'  # Replace with your desired AMI ID
+      SubnetId: !Ref PrivateSubnet
+
+Outputs:
+  PublicDNS:
+    Description: 'Public DNS of the EC2 instance'
+    Value: !GetAtt MyInstance.PublicDnsName
+
+  PrivateIP:
+    Description: 'Private IP of the EC2 instance'
+    Value: !GetAtt MyInstance.PrivateIp
